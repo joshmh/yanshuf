@@ -44,7 +44,17 @@ def parse_csv(fn):
 
     dates = df['year'].combine(df['month'], combine_to_date)
     l = islice(accumulate(df[ticker], func=adjust, initial=1000), 1, None)
-    return pd.Series(l, index=dates)
+    return (ticker, pd.Series(l, index=dates))
+
+
+def parse_amundi(fn):
+    file = data_dir + fn
+    ticker = os.path.splitext(fn)[0]
+    df = pd.read_csv(file, skiprows=15, header=0,
+                     names=['currency', 'value', 'dummy'],
+                     index_col=1,
+                     parse_dates=True)
+    return (ticker, pd.Series(df['value']))
 
 
 def parse_tabular_csv(fn):
@@ -62,7 +72,7 @@ def parse_tabular_csv(fn):
     df.sort_index(inplace=True)
     df.dropna(inplace=True)
     l = islice(accumulate(df[ticker], func=adjust, initial=1000), 1, None)
-    return pd.Series(l, index=df.index)
+    return (ticker, pd.Series(l, index=df.index))
 
 
 def parse_excel(fn):
@@ -77,7 +87,7 @@ def parse_excel(fn):
 # excel_dict = dict(map(parse_excel, excels))
 
 
-print(parse_tabular_csv(spreadsheets['tabular_csvs'][1]))
+print(parse_amundi(spreadsheets['amundi'][0]))
 
 # all.dropna(inplace=True)
 # # print(all)

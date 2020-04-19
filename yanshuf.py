@@ -3,13 +3,11 @@ import pandas as pd
 import bt
 import operator
 import math
-from data import spreadsheets, asset_classes
+from data import spreadsheets, asset_classes, data_dir
 from itertools import accumulate, islice, combinations
 
 
 long_vol_combos = combinations(asset_classes['long_vol'], 2)
-
-print(list(long_vol_combos))
 
 
 def adjust(acc, val):
@@ -32,9 +30,13 @@ def combine_to_date(year, month):
     return pd.to_datetime(date)
 
 
+def combine_to_date2(year, month):
+    date = f'{year}-{month}-01'
+    return pd.to_datetime(date)
+
+
 def parse_csv(fn):
-    dir = "/Users/josh/Tresors/seb-portfolio/portfolio/spreadsheets/"
-    file = dir + fn
+    file = data_dir + fn
     ticker = os.path.splitext(fn)[0]
     df = pd.read_csv(file, skiprows=1, header=None,
                      names=["year", "month", ticker, "value"],
@@ -45,9 +47,26 @@ def parse_csv(fn):
     return pd.Series(l, index=dates)
 
 
+def parse_tabular_csv(fn):
+    file = data_dir + fn
+    ticker = os.path.splitext(fn)[0]
+    df = pd.read_csv(file, skiprows=1, header=None, parse_dates=None,
+                     names=['year', '01', '02', '03', '04', '05', '06',
+                            '07', '08', '09', '10', '11', '12', 'ytd'],
+                     usecols=['year', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
+    df = df.melt(id_vars=['year'], var_name='month', value_name=ticker)
+    dates = df['year'].combine(df['month'], combine_to_date2)
+    series = pd.Series(df[ticker].to_list(), index=dates)
+    df.insert(0, 'date', dates)
+    df.set_index('date', drop=True, inplace=True)
+    df.sort_index(inplace=True)
+    df.dropna(inplace=True)
+    l = islice(accumulate(df[ticker], func=adjust, initial=1000), 1, None)
+    return pd.Series(l, index=df.index)
+
+
 def parse_excel(fn):
-    dir = "/Users/josh/Tresors/seb-portfolio/portfolio/spreadsheets/"
-    file = dir + fn
+    file = data_dir + fn
     ticker = os.path.splitext(fn)[0]
     orig_data = pd.read_excel(file, skiprows=2, header=None,
                               index_col=0, names=[ticker], parse_date=False)
@@ -58,7 +77,7 @@ def parse_excel(fn):
 # excel_dict = dict(map(parse_excel, excels))
 
 
-print(parse_csv(spreadsheets['csvs'][0]))
+print(parse_tabular_csv(spreadsheets['tabular_csvs'][1]))
 
 # all.dropna(inplace=True)
 # # print(all)

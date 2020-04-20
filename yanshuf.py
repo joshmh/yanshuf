@@ -3,9 +3,10 @@ import pandas as pd
 import bt
 import operator
 import math
-from data import spreadsheets, asset_classes, data_dir
-from itertools import accumulate, islice, combinations, chain
 
+from data import spreadsheets, asset_classes, data_dir, name_map
+from itertools import accumulate, islice, combinations, chain
+from monthdelta import monthmod
 
 long_vol_combos = combinations(asset_classes['long_vol'], 2)
 
@@ -40,9 +41,13 @@ def combine_to_date2(year, month):
     return pd.to_datetime(date)
 
 
+def generate_ticker(file_base):
+    return name_map[file_base] if file_base in name_map else file_base
+
+
 def parse_csv(fn):
     file = data_dir + fn
-    ticker = os.path.splitext(fn)[0]
+    ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=1, header=None,
                      names=["year", "month", ticker, "value"],
                      usecols=["year", "month", ticker], parse_dates=None)
@@ -54,7 +59,7 @@ def parse_csv(fn):
 
 def parse_amundi(fn):
     file = data_dir + fn
-    ticker = os.path.splitext(fn)[0]
+    ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=15, header=0,
                      names=['currency', 'value', 'dummy'],
                      index_col=1,
@@ -64,7 +69,7 @@ def parse_amundi(fn):
 
 def parse_tabular_csv(fn):
     file = data_dir + fn
-    ticker = os.path.splitext(fn)[0]
+    ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=1, header=None, parse_dates=None,
                      names=['year', '01', '02', '03', '04', '05', '06',
                             '07', '08', '09', '10', '11', '12', 'ytd'],
@@ -82,7 +87,7 @@ def parse_tabular_csv(fn):
 
 def parse_excel(fn):
     file = data_dir + fn
-    ticker = os.path.splitext(fn)[0]
+    ticker = generate_ticker(os.path.splitext(fn)[0])
     orig_data = pd.read_excel(file, skiprows=2, header=None,
                               index_col=0, names=[ticker], parse_date=False)
     l = islice(accumulate(orig_data[ticker],
@@ -97,31 +102,57 @@ data = dict(chain(map(parse_excel, spreadsheets['excels']),
                   map(parse_csv, spreadsheets['csvs']),
                   map(parse_amundi, spreadsheets['amundi'])))
 
-
-s = bt.Strategy('s1', [bt.algos.RunQuarterly(),
-                       bt.algos.SelectAll(),
-                       bt.algos.WeighInvVol(),
-                       bt.algos.Rebalance()])
-
+quarterly_strategy = ('qt', [bt.algos.RunQuarterly(),
+                             bt.algos.SelectAll(),
+                             bt.algos.WeighInvVol(),
+                             bt.algos.Rebalance()])
 
 sp500 = parse_csv('sp-500.csv')[1]
 
+stat_keys = ['max_drawdown', 'monthly_vol', 'best_month', 'best_year', 'worst_month',
+             'worst_year', 'monthly_skew', 'monthly_sharpe', 'cagr', 'calmar']
 
-def backtest(s, keys, data):
+
+def backtest(algo_stack, keys, data):
     filtered_data = {k: v for k, v in data.items() if k in keys}
     df = pd.DataFrame(filtered_data)
     df.dropna(inplace=True)
     # print(df)
+    strategy_name = ':'.join(keys) + '@' + algo_stack[0]
+    s = bt.Strategy(strategy_name, algo_stack[1])
+
     test = bt.Backtest(s, df, progress_bar=False)
     res = bt.run(test)
-    prices = res.prices['s1']
-    corr = sp500.corr(prices)
+    corr = df.corr().iat[0, 1] if df.shape[1] == 2 else None
+    filtered_stats = res.stats.filter(
+        stat_keys, axis='index')
 
-    print(f"Correlation S&P500: {corr:.3}")
+    stats_series = res.stats[strategy_name]
+    delta = res.stats[strategy_name].at['end'] - \
+        res.stats[strategy_name].at['start']
+    months_rec = monthmod(stats_series.at['start'], stats_series.at['end'])
+    months = months_rec[0].months
+
+    filtered_stats.loc['correlation'] = [corr]
+    filtered_stats.loc['months'] = [months]
+
+    return filtered_stats
 
 
-print(sp500)
-backtest(s, list(long_vol_combos)[0], data)
+def run_all(keylists):
+    first = True
+    for keylist in keylists:
+        df_new = backtest(quarterly_strategy, keylist, data)
+        df = df_new if first else df.join(df_new)
+        first = False
+    return df.transpose()
+
+
+df = run_all(long_vol_combos)
+df.to_csv('yanshuf.csv')
+# res = backtest(quarterly_strategy, ['sp-500'], data)
+# res = backtest(s1, list(long_vol_combos)[0], data)
+# print(res)
 # excel_dict = dict(map(parse_excel, excels))
 
 

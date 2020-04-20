@@ -136,13 +136,13 @@ def backtest(algo_stack, keys, data):
     filtered_stats = res.stats.filter(
         stat_keys, axis='index')
 
-    stats_series = res.stats[strategy_name]
-    delta = res.stats[strategy_name].at['end'] - \
-        res.stats[strategy_name].at['start']
-    months_rec = monthmod(stats_series.at['start'], stats_series.at['end'])
+    ss = res.stats[strategy_name]
+    months_rec = monthmod(ss['start'], ss['end'])
     months = months_rec[0].months
 
     filtered_stats.loc['correlation'] = [corr]
+    filtered_stats.loc['explosivity'] = [
+        ss['best_month'] / (2*-ss['max_drawdown'])]
     filtered_stats.loc['months'] = [months]
 
     return filtered_stats
@@ -163,14 +163,38 @@ def long_vol_score(df):
     return dd
 
 
+def to_float_fmt(f):
+    return "None" if f == None else f"{f:.3f}"
+
+
+def to_pct_fmt(f):
+    return "None" if f == None else f"{f:.2%}"
+
+
+def to_int_fmt(f):
+    return f'{f}'
+
+
+def make_formatter(columns):
+    isnum = ['score', 'correlation', 'calmar', 'months']
+    return list(map(lambda x: to_float_fmt if x in isnum else to_pct_fmt, columns))
+
+
 df = run_all(long_vol_combos)
 score = df.agg(long_vol_score, axis=1)
 score.name = 'score'
 df = df.join(score)
-df.sort_values('score', inplace=True, ascending=False)
-df.style.format({'score': '{:.2%}'})
-print(df)
+df.sort_values('explosivity', inplace=True, ascending=False)
 
+html = df.style\
+    .format(to_pct_fmt)\
+    .format(to_float_fmt, subset=[
+        'score', 'correlation', 'calmar', 'months', 'explosivity', 'monthly_skew', 'monthly_sharpe'])\
+    .format(to_int_fmt, subset=['months'])\
+    .render()
+print(html)
+
+# lambda x: f"{x:.2%}"}
 # res = backtest(quarterly_strategy, ['sp-500'], data)
 # res = backtest(s1, list(long_vol_combos)[0], data)
 # print(res)

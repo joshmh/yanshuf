@@ -8,7 +8,8 @@ from data import spreadsheets, asset_classes, data_dir, name_map
 from itertools import accumulate, islice, combinations, chain
 from monthdelta import monthmod
 
-long_vol_combos = combinations(asset_classes['long_vol'], 2)
+long_vol_combos = chain(combinations(
+    asset_classes['long_vol'], 2), combinations(asset_classes['long_vol'], 1))
 
 
 def adjust(acc, val):
@@ -102,10 +103,18 @@ data = dict(chain(map(parse_excel, spreadsheets['excels']),
                   map(parse_csv, spreadsheets['csvs']),
                   map(parse_amundi, spreadsheets['amundi'])))
 
-quarterly_strategy = ('qt', [bt.algos.RunQuarterly(),
-                             bt.algos.SelectAll(),
-                             bt.algos.WeighInvVol(),
-                             bt.algos.Rebalance()])
+algo_stacks = [
+    ('qr', [bt.algos.RunQuarterly(),
+            bt.algos.SelectAll(),
+            bt.algos.WeighInvVol(),
+            bt.algos.Rebalance()]
+     ),
+    ('qre', [bt.algos.RunQuarterly(),
+             bt.algos.SelectAll(),
+             bt.algos.WeighEqually(),
+             bt.algos.Rebalance()]
+     )
+]
 
 sp500 = parse_csv('sp-500.csv')[1]
 
@@ -142,14 +151,26 @@ def backtest(algo_stack, keys, data):
 def run_all(keylists):
     first = True
     for keylist in keylists:
-        df_new = backtest(quarterly_strategy, keylist, data)
-        df = df_new if first else df.join(df_new)
-        first = False
+        for algo_stack in algo_stacks:
+            df_new = backtest(algo_stack, keylist, data)
+            df = df_new if first else df.join(df_new)
+            first = False
     return df.transpose()
 
 
+def long_vol_score(df):
+    dd = df[0]
+    return dd
+
+
 df = run_all(long_vol_combos)
-df.to_csv('yanshuf.csv')
+score = df.agg(long_vol_score, axis=1)
+score.name = 'score'
+df = df.join(score)
+df.sort_values('score', inplace=True, ascending=False)
+df.style.format({'score': '{:.2%}'})
+print(df)
+
 # res = backtest(quarterly_strategy, ['sp-500'], data)
 # res = backtest(s1, list(long_vol_combos)[0], data)
 # print(res)

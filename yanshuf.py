@@ -4,7 +4,7 @@ import bt
 import operator
 import math
 from data import spreadsheets, asset_classes, data_dir
-from itertools import accumulate, islice, combinations
+from itertools import accumulate, islice, combinations, chain
 
 
 long_vol_combos = combinations(asset_classes['long_vol'], 2)
@@ -12,7 +12,12 @@ long_vol_combos = combinations(asset_classes['long_vol'], 2)
 
 def adjust(acc, val):
     val = 0 if math.isnan(val) else val
-    return acc + (acc * (val/100))
+    return acc * (1 + (val/100))
+
+
+def adjust_pct(acc, val):
+    val = 0 if math.isnan(val) else val
+    return acc * (1 + val)
 
 
 def to_series(d, key):
@@ -54,7 +59,7 @@ def parse_amundi(fn):
                      names=['currency', 'value', 'dummy'],
                      index_col=1,
                      parse_dates=True)
-    return (ticker, pd.Series(df['value']))
+    return (ticker, pd.Series(df['value']).mul(10))
 
 
 def parse_tabular_csv(fn):
@@ -80,14 +85,47 @@ def parse_excel(fn):
     ticker = os.path.splitext(fn)[0]
     orig_data = pd.read_excel(file, skiprows=2, header=None,
                               index_col=0, names=[ticker], parse_date=False)
-    data = to_series(orig_data, ticker)
+    l = islice(accumulate(orig_data[ticker],
+                          func=adjust_pct, initial=1000), 1, None)
+    data = pd.Series(l, orig_data.index)
+
     return (ticker, data)
 
 
+data = dict(chain(map(parse_excel, spreadsheets['excels']),
+                  map(parse_tabular_csv, spreadsheets['tabular_csvs']),
+                  map(parse_csv, spreadsheets['csvs']),
+                  map(parse_amundi, spreadsheets['amundi'])))
+
+
+s = bt.Strategy('s1', [bt.algos.RunQuarterly(),
+                       bt.algos.SelectAll(),
+                       bt.algos.WeighInvVol(),
+                       bt.algos.Rebalance()])
+
+
+sp500 = parse_csv('sp-500.csv')[1]
+
+
+def backtest(s, keys, data):
+    filtered_data = {k: v for k, v in data.items() if k in keys}
+    df = pd.DataFrame(filtered_data)
+    df.dropna(inplace=True)
+    # print(df)
+    test = bt.Backtest(s, df, progress_bar=False)
+    res = bt.run(test)
+    prices = res.prices['s1']
+    corr = sp500.corr(prices)
+
+    print(f"Correlation S&P500: {corr:.3}")
+
+
+print(sp500)
+backtest(s, list(long_vol_combos)[0], data)
 # excel_dict = dict(map(parse_excel, excels))
 
 
-print(parse_amundi(spreadsheets['amundi'][0]))
+# print(parse_amundi(spreadsheets['amundi'][0]))
 
 # all.dropna(inplace=True)
 # # print(all)

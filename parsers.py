@@ -4,7 +4,7 @@ import bt
 import operator
 import math
 
-from data import spreadsheets, asset_classes, data_dir, name_map
+from data_loader import spreadsheets, asset_classes, data_dir, name_map
 from itertools import accumulate, islice, combinations, chain
 
 
@@ -16,10 +16,6 @@ def adjust(acc, val):
 def adjust_pct(acc, val):
     val = 0 if math.isnan(val) else val
     return acc * (1 + val)
-
-
-def csv_date_parser(l):
-    return "2010-01-01"
 
 
 def combine_to_date(year, month):
@@ -88,14 +84,18 @@ def parse_excel(fn):
     return (ticker, data)
 
 
+def eureka_to_date(d):
+    m, y = d.split(' ')
+    return pd.to_datetime(f"{y}-{m}-01")
+
+
 def parse_eureka(fn):
     file = data_dir + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     orig_data = pd.read_excel(file, skiprows=4, header=None,
-                              index_col=0, names=['return', 'value'], parse_date=True)
-    l = islice(accumulate(orig_data[ticker],
-                          func=adjust_pct, initial=1000), 1, None)
-    data = pd.Series(l, orig_data.index)
+                              index_col=0, names=['return', 'value'], parse_dates=False)
+    dates = orig_data.index.map(eureka_to_date)
+    data = pd.Series(orig_data['value'].mul(10), index=dates, name=ticker)
 
     return (ticker, data)
 
@@ -104,4 +104,7 @@ def load_all():
     return dict(chain(map(parse_excel, spreadsheets['excels']),
                       map(parse_tabular_csv, spreadsheets['tabular_csvs']),
                       map(parse_csv, spreadsheets['csvs']),
-                      map(parse_amundi, spreadsheets['amundi'])))
+                      map(parse_amundi, spreadsheets['amundi']),
+                      map(parse_eureka, spreadsheets['eurekahedge'])
+                      )
+                )

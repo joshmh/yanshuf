@@ -1,21 +1,12 @@
 import pandas as pd
 import bt
+import data_loader
 
-from data import asset_classes
-from itertools import islice, combinations, chain
+from itertools import islice
 from monthdelta import monthmod
 from parsers import load_all
 
-long_vol_combos = chain(combinations(
-    asset_classes['long_vol'], 2), combinations(asset_classes['long_vol'], 1))
-
-
 algo_stacks = [
-    ('qr', [bt.algos.RunQuarterly(),
-            bt.algos.SelectAll(),
-            bt.algos.WeighInvVol(),
-            bt.algos.Rebalance()]
-     ),
     ('qre', [bt.algos.RunQuarterly(),
              bt.algos.SelectAll(),
              bt.algos.WeighEqually(),
@@ -45,12 +36,22 @@ def backtest(algo_stack, keys, data):
     months_rec = monthmod(ss['start'], ss['end'])
     months = months_rec[0].months
 
-    filtered_stats.loc['correlation'] = [corr]
-    filtered_stats.loc['explosivity'] = [
-        ss['best_month'] / (2*-ss['max_drawdown'])]
-    filtered_stats.loc['months'] = [months]
+    return_table = res[strategy_name].return_table
 
-    return filtered_stats
+    extras = pd.Series({
+        'correlation': corr,
+        'explosivity': ss['best_month'] / (2*-ss['max_drawdown']),
+        'mar-2020': return_table.at[2020, 'Mar'],
+        '2020': return_table.at[2020, 'YTD'],
+        '2019': return_table.at[2019, 'YTD'],
+        '2018': return_table.at[2018, 'YTD']
+    }, name=strategy_name)
+
+    # final = filtered_stats.merge(extras)
+    final = filtered_stats.append(extras)
+    print(extras)
+    print(final)
+    return final
 
 
 data = load_all()
@@ -88,16 +89,18 @@ def make_formatter(columns):
     return list(map(lambda x: to_float_fmt if x in isnum else to_pct_fmt, columns))
 
 
-df = run_all(long_vol_combos)
+long_vol_groups = data_loader.long_vol_groups()
+
+df = run_all(long_vol_groups)
 score = df.agg(long_vol_score, axis=1)
 score.name = 'score'
 df = df.join(score)
-df.sort_values('explosivity', inplace=True, ascending=False)
+# df.sort_values('explosivity', inplace=True, ascending=False)
 
-html = df.style\
-    .format(to_pct_fmt)\
-    .format(to_float_fmt, subset=[
-        'score', 'correlation', 'calmar', 'months', 'explosivity', 'monthly_skew', 'monthly_sharpe'])\
-    .format(to_int_fmt, subset=['months'])\
-    .render()
-print(html)
+# html = df.style\
+#     .format(to_pct_fmt)\
+#     .format(to_float_fmt, subset=[
+#         'score', 'correlation', 'calmar', 'months', 'explosivity', 'monthly_skew', 'monthly_sharpe'])\
+#     .format(to_int_fmt, subset=['months'])\
+#     .render()
+# print(html)

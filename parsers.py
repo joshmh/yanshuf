@@ -4,7 +4,7 @@ import bt
 import operator
 import math
 
-from data_loader import spreadsheets, asset_classes, data_dir, name_map
+from data_loader import spreadsheets, asset_classes, data_dir
 from itertools import accumulate, islice, combinations, chain
 
 
@@ -29,7 +29,24 @@ def combine_to_date2(year, month):
 
 
 def generate_ticker(file_base):
-    return name_map[file_base] if file_base in name_map else file_base
+    return file_base
+
+
+def hfrx_to_date(d):
+    m, y = d.split('/')
+    return pd.to_datetime(f"{y}-{m}-01")
+
+
+def parse_hfrx(fn):
+    file = data_dir + fn
+    ticker = generate_ticker(os.path.splitext(fn)[0])
+    df = pd.read_csv(file, skiprows=4, header=None, index_col=0,
+                     names=['date', 'value'], parse_dates=None, skipfooter=7)
+
+    dates = df.index.map(hfrx_to_date)
+    data = pd.Series(df['value'], index=dates, name=ticker)
+
+    return (ticker, data)
 
 
 def parse_csv(fn):
@@ -105,6 +122,7 @@ def load_all():
                       map(parse_tabular_csv, spreadsheets['tabular_csvs']),
                       map(parse_csv, spreadsheets['csvs']),
                       map(parse_amundi, spreadsheets['amundi']),
-                      map(parse_eureka, spreadsheets['eurekahedge'])
+                      map(parse_eureka, spreadsheets['eurekahedge']),
+                      map(parse_hfrx, spreadsheets['hfrx'])
                       )
                 )

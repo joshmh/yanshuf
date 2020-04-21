@@ -44,8 +44,7 @@ def backtest(algo_stack, keys, data):
     mar_2020 = return_table.at[2020, 'Mar']
     ytd_2020 = return_table.at[2020, 'YTD']
     explosivity = mar_2020 / (2*-ss['max_drawdown'])
-    score = explosivity
-    score = ss['cagr']
+    score = ss['calmar']
     extras = pd.DataFrame([pd.Series({
         'correlation': corr,
         'explosivity': explosivity,
@@ -98,9 +97,8 @@ def to_int_fmt(f):
 
 
 def to_html():
-    long_vol_groups = data_loader.long_vol_groups()
-
-    df = run_all(long_vol_groups)
+    groups = data_loader.commodity_trend_groups()
+    df = run_all(groups)
     df.sort_values('score', inplace=True, ascending=False)
 
     html = df.style\

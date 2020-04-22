@@ -129,12 +129,57 @@ def run_commodity_trend():
     return df
 
 
+def run_dragon():
+    weights = data_loader.dragon
+    keys = weights.keys()
+
+    filtered_data = {k: v for k, v in data.items() if k in keys}
+    df = pd.DataFrame(filtered_data)
+    df.dropna(inplace=True)
+    strategy_name = 'dragon'
+    s = bt.Strategy(strategy_name, [bt.algos.RunQuarterly(),
+                                    bt.algos.SelectAll(),
+                                    bt.algos.WeighEqually(),
+                                    bt.algos.Rebalance()])
+
+    test = bt.Backtest(s, df, progress_bar=False)
+    res = bt.run(test)
+    ss = res.stats[strategy_name]
+    months_rec = monthmod(ss['start'], ss['end'])
+    months = months_rec[0].months
+
+    return_table = res[strategy_name].return_table
+    mar_2020 = return_table.at[2020, 'Mar']
+    ytd_2020 = return_table.at[2020, 'YTD']
+
+    extras = pd.DataFrame([pd.Series({
+        'mar-2020': mar_2020,
+        '2020': ytd_2020,
+        '2019': return_table.at[2019, 'YTD'],
+        '2018': return_table.at[2018, 'YTD'],
+        'months': months
+    }, name=strategy_name)])
+
+    index = ['months', 'cagr', 'mar-2020', '2020', '2019', '2018', 'monthly_vol', 'max_drawdown',
+             'calmar', 'monthly_skew', 'monthly_sharpe',
+             'best_month', 'worst_month', 'best_year', 'worst_year'
+             ]
+
+    filtered_stats = res.stats.filter(
+        stat_keys, axis='index')
+
+    # re-order columns
+    final = filtered_stats.transpose().join(extras)[index]
+
+    return final
+
+
 def to_html(df):
     html = df.style\
         .format(to_pct_fmt)\
         .format(to_int_fmt, subset=['months'])\
         .format(to_float_fmt,
-                subset=['score', 'correlation', 'calmar', 'explosivity', 'monthly_skew', 'monthly_sharpe'])\
+                subset=['calmar', 'monthly_skew', 'monthly_sharpe'])\
         .render()
 
     return html

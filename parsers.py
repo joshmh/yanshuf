@@ -127,12 +127,12 @@ def parse_fred(fn):
     return (ticker, data)
 
 
-def parse_ice(fn):
+def parse_yahoo(fn):
     file = data_dir + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
-    orig_data = pd.read_excel(file, skiprows=1, header=None,
-                              index_col=0, usecols=[0, 1], parse_dates=True)
-    data = pd.Series(orig_data[1], name=ticker)
+    orig_data = pd.read_csv(file, skiprows=1, header=None,
+                            index_col=0, usecols=[0, 5], parse_dates=True)
+    data = pd.Series(orig_data[5], name=ticker)
 
     return (ticker, data)
 
@@ -143,6 +143,8 @@ def load_all():
                       map(parse_iasg, spreadsheets['iasg']),
                       map(parse_amundi, spreadsheets['amundi']),
                       map(parse_eureka, spreadsheets['eurekahedge']),
-                      map(parse_hfrx, spreadsheets['hfrx'])
+                      map(parse_hfrx, spreadsheets['hfrx']),
+                      map(parse_yahoo, spreadsheets['yahoo']),
+                      map(parse_fred, spreadsheets['fred'])
                       )
                 )

@@ -8,6 +8,6 @@ env = Environment(
 )
 
 template = env.get_template('index.html')
-df = yanshuf.run_alts()
+df = yanshuf.run_dragon()
 table = yanshuf.to_html(df)
 print(template.render(table=table))

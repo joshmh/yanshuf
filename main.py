@@ -1,4 +1,5 @@
-from yanshuf import to_html
+import yanshuf
+
 from jinja2 import Environment, PackageLoader, select_autoescape
 
 env = Environment(
@@ -7,5 +8,6 @@ env = Environment(
 )
 
 template = env.get_template('index.html')
-table = to_html()
+df = yanshuf.run_alts()
+table = yanshuf.to_html(df)
 print(template.render(table=table))

@@ -49,7 +49,7 @@ def parse_hfrx(fn):
     return (ticker, data)
 
 
-def parse_csv(fn):
+def parse_iasg(fn):
     file = data_dir + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=1, header=None,
@@ -89,7 +89,7 @@ def parse_tabular_csv(fn):
     return (ticker, pd.Series(l, index=df.index))
 
 
-def parse_excel(fn):
+def parse_rcm(fn):
     file = data_dir + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     orig_data = pd.read_excel(file, skiprows=2, header=None,
@@ -117,10 +117,30 @@ def parse_eureka(fn):
     return (ticker, data)
 
 
+def parse_fred(fn):
+    file = data_dir + fn
+    ticker = generate_ticker(os.path.splitext(fn)[0])
+    df = pd.read_csv(file, skiprows=1, header=None, index_col=0, na_values='.',
+                     names=['date', 'value'], parse_dates=True)
+    data = pd.Series(df['value'], name=ticker)
+
+    return (ticker, data)
+
+
+def parse_ice(fn):
+    file = data_dir + fn
+    ticker = generate_ticker(os.path.splitext(fn)[0])
+    orig_data = pd.read_excel(file, skiprows=1, header=None,
+                              index_col=0, usecols=[0, 1], parse_dates=True)
+    data = pd.Series(orig_data[1], name=ticker)
+
+    return (ticker, data)
+
+
 def load_all():
-    return dict(chain(map(parse_excel, spreadsheets['excels']),
+    return dict(chain(map(parse_rcm, spreadsheets['rcm']),
                       map(parse_tabular_csv, spreadsheets['tabular_csvs']),
-                      map(parse_csv, spreadsheets['csvs']),
+                      map(parse_iasg, spreadsheets['iasg']),
                       map(parse_amundi, spreadsheets['amundi']),
                       map(parse_eureka, spreadsheets['eurekahedge']),
                       map(parse_hfrx, spreadsheets['hfrx'])

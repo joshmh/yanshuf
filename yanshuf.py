@@ -1,6 +1,8 @@
 import pandas as pd
 import bt
 import data_loader
+import matplotlib.pyplot as plt
+import ffn
 
 from itertools import islice
 from monthdelta import monthmod
@@ -8,10 +10,15 @@ from parsers import load_all
 from math import isnan
 
 algo_stacks = [
-    ('qr', [bt.algos.RunQuarterly(),
-            bt.algos.SelectAll(),
-            bt.algos.WeighInvVol(),
-            bt.algos.Rebalance()]
+    ('qrv', [bt.algos.RunQuarterly(),
+             bt.algos.SelectAll(),
+             bt.algos.WeighInvVol(),
+             bt.algos.Rebalance()]
+     ),
+    ('qre', [bt.algos.RunQuarterly(),
+             bt.algos.SelectAll(),
+             bt.algos.WeighEqually(),
+             bt.algos.Rebalance()]
      )
 ]
 
@@ -32,7 +39,12 @@ def backtest(algo_stack, keys, data):
 
     test = bt.Backtest(s, df, progress_bar=False)
     res = bt.run(test)
-    corr = df.corr().iat[0, 1] if df.shape[1] == 2 else None
+
+    # fig, axs = plt.subplots(figsize=(12, 12))
+    # df.plot.scatter(0, 1, ax=axs)
+    # fig.savefig(f"plots/{strategy_name}-scatter.png")
+    dfp = df.pct_change()
+    corr = dfp.corr().iat[0, 1] if dfp.shape[1] == 2 else None
     filtered_stats = res.stats.filter(
         stat_keys, axis='index')
 
@@ -96,11 +108,28 @@ def to_int_fmt(f):
     return f'{f:.0f}'
 
 
-def to_html():
+def run_alts():
+    groups = data_loader.alt_groups()
+    df = run_all(groups)
+    df.sort_values('score', inplace=True, ascending=False)
+    return df
+
+
+def run_long_vol():
+    groups = data_loader.long_vol_groups()
+    df = run_all(groups)
+    df.sort_values('score', inplace=True, ascending=False)
+    return df
+
+
+def run_commodity_trend():
     groups = data_loader.commodity_trend_groups()
     df = run_all(groups)
     df.sort_values('score', inplace=True, ascending=False)
+    return df
 
+
+def to_html(df):
     html = df.style\
         .format(to_pct_fmt)\
         .format(to_int_fmt, subset=['months'])\

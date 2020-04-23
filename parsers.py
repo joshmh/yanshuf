@@ -137,14 +137,22 @@ def parse_yahoo(fn):
     return (ticker, data)
 
 
-def load_all():
-    return dict(chain(map(parse_rcm, spreadsheets['rcm']),
-                      map(parse_tabular_csv, spreadsheets['tabular_csvs']),
-                      map(parse_iasg, spreadsheets['iasg']),
-                      map(parse_amundi, spreadsheets['amundi']),
-                      map(parse_eureka, spreadsheets['eurekahedge']),
-                      map(parse_hfrx, spreadsheets['hfrx']),
-                      map(parse_yahoo, spreadsheets['yahoo']),
-                      map(parse_fred, spreadsheets['fred'])
-                      )
+def restrict(pair):
+    ticker, df = pair
+    return (ticker, df[:'2019-12'])
+
+
+def load():
+    return dict(map(restrict,
+                    chain(map(parse_rcm, spreadsheets['rcm']),
+                          map(parse_tabular_csv,
+                              spreadsheets['tabular_csvs']),
+                          map(parse_iasg, spreadsheets['iasg']),
+                          map(parse_amundi, spreadsheets['amundi']),
+                          map(parse_eureka,
+                              spreadsheets['eurekahedge']),
+                          map(parse_hfrx, spreadsheets['hfrx']),
+                          map(parse_yahoo, spreadsheets['yahoo']),
+                          map(parse_fred, spreadsheets['fred'])
+                          ))
                 )

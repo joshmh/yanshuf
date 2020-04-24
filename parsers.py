@@ -139,7 +139,7 @@ def parse_yahoo(fn):
 
 def restrict(pair):
     ticker, df = pair
-    return (ticker, df[:'2019-12'])
+    return (ticker, df)
 
 
 def load():

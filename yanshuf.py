@@ -2,6 +2,7 @@ import pandas as pd
 import bt
 import data_loader
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
 import ffn
 
 from datetime import date
@@ -85,13 +86,13 @@ def backtest(algo_stack, keys, data):
     return final
 
 
-# def run_all(keylists):
-#     dfs = []
-#     for keylist in keylists:
-#         for algo_stack in algo_stacks:
-#             df_new = backtest(algo_stack, keylist, data)
-#             dfs.append(df_new)
-#     return pd.concat(dfs)
+def run_all(keylists, data):
+    dfs = []
+    for keylist in keylists:
+        for algo_stack in algo_stacks:
+            df_new = backtest(algo_stack, keylist, data)
+            dfs.append(df_new)
+    return pd.concat(dfs)
 
 
 def long_vol_score(df):
@@ -111,40 +112,57 @@ def to_int_fmt(f):
     return f'{f:.0f}'
 
 
-# def run_alts():
-#     groups = data_loader.alt_groups()
-#     df = run_all(groups)
-#     df.sort_values('score', inplace=True, ascending=False)
-#     return df.style\
-#         .format(to_pct_fmt)\
-#         .format(to_int_fmt, subset=['months'])\
-#         .format(to_float_fmt,
-#                 subset=['explosivity', 'correlation', 'score', 'calmar', 'monthly_skew', 'monthly_sharpe'])\
-#         .render()
+def boxplot(name, df):
+    fig, axs = plt.subplots(figsize=(12, 4))
+    axs.yaxis.set_major_formatter(mtick.PercentFormatter(1.0))
+    df.loc[:, ['cagr', '2020', '2018', 'worst_year',
+               'worst_month', 'max_drawdown']].plot.box(ax=axs, grid=True)
+    fig.savefig(f"plots/{name}-boxplot.png")
 
 
-# def run_long_vol():
-#     groups = data_loader.long_vol_groups()
-#     df = run_all(groups)
-#     df.sort_values('score', inplace=True, ascending=False)
-#     return df.style\
-#         .format(to_pct_fmt)\
-#         .format(to_int_fmt, subset=['months'])\
-#         .format(to_float_fmt,
-#                 subset=['explosivity', 'correlation', 'score', 'calmar', 'monthly_skew', 'monthly_sharpe'])\
-#         .render()
+def run_alts():
+    all_keys = data_loader.asset_classes['alts']
+    data = compile_data(60, all_keys)
+    groups = combinations(data.keys(), 2)
+    df = run_all(groups, data)
+    df.sort_values('score', inplace=True, ascending=False)
+    boxplot('alts', df)
+    return df.style\
+        .format(to_pct_fmt)\
+        .format(to_int_fmt, subset=['months'])\
+        .format(to_float_fmt,
+                subset=['explosivity', 'correlation', 'score', 'calmar', 'monthly_skew', 'monthly_sharpe'])\
+        .render()
 
 
-# def run_commodity_trend():
-#     groups = data_loader.commodity_trend_groups()
-#     df = run_all(groups)
-#     df.sort_values('score', inplace=True, ascending=False)
-#     return df.style\
-#         .format(to_pct_fmt)\
-#         .format(to_int_fmt, subset=['months'])\
-#         .format(to_float_fmt,
-#                 subset=['correlation', 'score', 'calmar', 'monthly_skew', 'monthly_sharpe'])\
-#         .render()
+def run_long_vol():
+    all_keys = data_loader.asset_classes['long_vol']
+    data = compile_data(60, all_keys)
+    groups = combinations(data.keys(), 2)
+
+    df = run_all(groups, data)
+    df.sort_values('score', inplace=True, ascending=False)
+    return df.style\
+        .format(to_pct_fmt)\
+        .format(to_int_fmt, subset=['months'])\
+        .format(to_float_fmt,
+                subset=['explosivity', 'correlation', 'score', 'calmar', 'monthly_skew', 'monthly_sharpe'])\
+        .render()
+
+
+def run_commodity_trend():
+    all_keys = data_loader.asset_classes['commodity_trend']
+    data = compile_data(60, all_keys)
+    groups = combinations(data.keys(), 2)
+
+    df = run_all(groups, data)
+    df.sort_values('score', inplace=True, ascending=False)
+    return df.style\
+        .format(to_pct_fmt)\
+        .format(to_int_fmt, subset=['months'])\
+        .format(to_float_fmt,
+                subset=['correlation', 'score', 'calmar', 'monthly_skew', 'monthly_sharpe'])\
+        .render()
 
 
 # def run_dragon():
@@ -209,10 +227,10 @@ def dragon_backtest(keys, strategy, data):
     months = months_rec[0].months
     ps = res[strategy_name]
     return_table = ps.return_table
-    # mar_2020 = return_table.at[2020, 'Mar']
-    # ytd_2020 = return_table.at[2020, 'YTD']
-    mar_2020 = None
-    ytd_2020 = None
+    mar_2020 = return_table.at[2020, 'Mar']
+    ytd_2020 = return_table.at[2020, 'YTD']
+    # mar_2020 = None
+    # ytd_2020 = None
     score = ss['cagr']
     extras = pd.DataFrame([pd.Series({
         'mar-2020': mar_2020,
@@ -235,11 +253,12 @@ def dragon_backtest(keys, strategy, data):
 
 
 def run_all_dragon():
+    stock_ticker = 'ACWI'
     long_vol = data_loader.asset_classes['long_vol']
     commodity_trend = data_loader.asset_classes['commodity_trend']
-    other = ('sp-500', 'TLT', 'gold-oz-usd')
+    other = (stock_ticker, 'TLT', 'gold-oz-usd')
     all_keys = list(chain(long_vol, commodity_trend, other))
-    data = compile_data(60, all_keys)
+    data = compile_data(55, all_keys)
     keys = data.keys()
     long_vol_funds = set(long_vol).intersection(keys)
     commodity_trend_funds = set(commodity_trend).intersection(keys)
@@ -247,7 +266,7 @@ def run_all_dragon():
     commodity_trend_groups = product(
         combinations(commodity_trend_funds, 2), algo_stacks)
     combos = list(product(long_vol_groups, commodity_trend_groups))
-    dragon_weights = {'sp-500': 0.24, 'TLT': 0.18,
+    dragon_weights = {stock_ticker: 0.24, 'TLT': 0.18,
                       'long_vol': 0.21, 'commodity_trend': 0.18, 'gold-oz-usd': 0.19}
 
     dfs = []
@@ -267,12 +286,15 @@ def run_all_dragon():
             **dragon_weights),
             bt.algos.Rebalance()], [long_vol_strategy,
                                     commodity_trend_strategy,
-                                    'sp-500', 'TLT', 'gold-oz-usd'])
+                                    stock_ticker, 'TLT', 'gold-oz-usd'])
         df = dragon_backtest(keys, strategy, data)
         dfs.append(df)
 
-    final = pd.concat(dfs).sort_values(
-        'score', ascending=False).iloc[:100]
+    pds = pd.concat(dfs).sort_values(
+        'score', ascending=False)
+
+    boxplot('dragon-orig', pds)
+    final = pds.iloc[:100]
 
     return final.style.format(to_pct_fmt)\
         .format(to_int_fmt, subset=['months'])\
@@ -283,3 +305,8 @@ def run_all_dragon():
     # dunn-wma:fund-514@qrv
     # tail-reaper:kohinoor-core@qrv
     # polar-star-snn:blackbird-alpha-2.5@qre
+
+
+# dunn-wma:fund-514@qrv
+# tail-reaper:kohinoor-core@qrv
+# polar-star-snn:blackbird-alpha-2.5@qre

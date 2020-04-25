@@ -8,5 +8,5 @@ env = Environment(
 )
 
 template = env.get_template('index.html')
-table = yanshuf.run_alts()
+table = yanshuf.run_tailored_dragon()
 print(template.render(table=table))

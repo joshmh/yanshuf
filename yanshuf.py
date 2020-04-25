@@ -302,11 +302,45 @@ def run_all_dragon():
                 subset=['calmar', 'monthly_skew', 'monthly_sharpe'])\
         .render()
 
-    # dunn-wma:fund-514@qrv
-    # tail-reaper:kohinoor-core@qrv
-    # polar-star-snn:blackbird-alpha-2.5@qre
 
+def run_tailored_dragon():
+    stock_ticker = 'ACWI'
+    qrv = algo_stacks[0]
+    qre = algo_stacks[1]
 
-# dunn-wma:fund-514@qrv
-# tail-reaper:kohinoor-core@qrv
-# polar-star-snn:blackbird-alpha-2.5@qre
+    dragon_weights = {stock_ticker: 0.12, 'TLT': 0.09,
+                      'long_vol': 0.21, 'commodity_trend': 0.18, 'gold-oz-usd': 0.19, 'alt': 0.21}
+
+    tailored = data_loader.tailored
+    long_vol_group = tailored['long_vol_group']
+    long_vol_strat = qrv
+    commodity_trend_group = tailored['commodity_trend_group']
+    commodity_trend_strat = qrv
+    alt_group = tailored['alt_group']
+    alt_strat = qre
+
+    keys = long_vol_group + commodity_trend_group + \
+        alt_group + [stock_ticker, 'TLT', 'gold-oz-usd']
+    data = compile_data(55, keys)
+
+    dfs = []
+    strategy_name = 'tailored-dragon'
+    long_vol_strategy = bt.Strategy(
+        'long_vol', long_vol_strat[1], list(long_vol_group))
+    commodity_trend_strategy = bt.Strategy(
+        'commodity_trend', commodity_trend_strat[1], list(commodity_trend_group))
+    alt_strategy = bt.Strategy(
+        'alt', alt_strat[1], list(alt_group))
+    strategy = bt.Strategy(strategy_name, [bt.algos.RunQuarterly(),
+                                           bt.algos.SelectAll(),
+                                           bt.algos.WeighEqually(),
+                                           bt.algos.Rebalance()], [long_vol_strategy,
+                                                                   commodity_trend_strategy, alt_strategy,
+                                                                   stock_ticker, 'TLT', 'gold-oz-usd'])
+    df = dragon_backtest(keys, strategy, data)
+
+    return df.style.format(to_pct_fmt)\
+        .format(to_int_fmt, subset=['months'])\
+        .format(to_float_fmt,
+                subset=['calmar', 'monthly_skew', 'monthly_sharpe'])\
+        .render()

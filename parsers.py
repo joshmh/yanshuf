@@ -1,18 +1,19 @@
-import os
-import pandas as pd
-import bt
-import operator
-import math
+"""
+Parses each kind of spreadsheet into our data structures.
+"""
 
-from data_loader import spreadsheets, asset_classes, data_dir
-from itertools import accumulate, islice, combinations, chain
+import math
+import os
+from itertools import accumulate, islice, chain
+import pandas as pd
+from data_loader import spreadsheets, DATA_DIR
 
 
 def adjust(acc, val):
     val = 0 if math.isnan(val) else val
     return acc * (1 + (val/100))
 
-
+ 
 def adjust_pct(acc, val):
     val = 0 if math.isnan(val) else val
     return acc * (1 + val)
@@ -38,7 +39,7 @@ def hfrx_to_date(d):
 
 
 def parse_hfrx(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=4, header=None, index_col=0,
                      names=['date', 'value'], parse_dates=None, skipfooter=7)
@@ -50,7 +51,7 @@ def parse_hfrx(fn):
 
 
 def parse_iasg(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=1, header=None,
                      names=["year", "month", ticker, "value"],
@@ -62,7 +63,7 @@ def parse_iasg(fn):
 
 
 def parse_amundi(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=15, header=0,
                      names=['currency', 'value', 'dummy'],
@@ -72,15 +73,15 @@ def parse_amundi(fn):
 
 
 def parse_tabular_csv(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=1, header=None, parse_dates=None,
                      names=['year', '01', '02', '03', '04', '05', '06',
                             '07', '08', '09', '10', '11', '12', 'ytd'],
-                     usecols=['year', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'])
+                     usecols=['year', '01', '02', '03', '04', '05', '06',
+                              '07', '08', '09', '10', '11', '12'])
     df = df.melt(id_vars=['year'], var_name='month', value_name=ticker)
     dates = df['year'].combine(df['month'], combine_to_date2)
-    series = pd.Series(df[ticker].to_list(), index=dates)
     df.insert(0, 'date', dates)
     df.set_index('date', drop=True, inplace=True)
     df.sort_index(inplace=True)
@@ -90,7 +91,7 @@ def parse_tabular_csv(fn):
 
 
 def parse_rcm(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     orig_data = pd.read_excel(file, skiprows=2, header=None,
                               index_col=0, names=[ticker], parse_date=False)
@@ -107,7 +108,7 @@ def eureka_to_date(d):
 
 
 def parse_eureka(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     orig_data = pd.read_excel(file, skiprows=4, header=None,
                               index_col=0, names=['return', 'value'], parse_dates=False)
@@ -118,7 +119,7 @@ def parse_eureka(fn):
 
 
 def parse_fred(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     df = pd.read_csv(file, skiprows=1, header=None, index_col=0, na_values='.',
                      names=['date', 'value'], parse_dates=True)
@@ -128,7 +129,7 @@ def parse_fred(fn):
 
 
 def parse_yahoo(fn):
-    file = data_dir + fn
+    file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
     orig_data = pd.read_csv(file, skiprows=1, header=None,
                             index_col=0, usecols=[0, 5], parse_dates=True)

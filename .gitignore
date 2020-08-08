@@ -128,6 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+.vscode
+
 data_loader.py
 *.csv
 *.html

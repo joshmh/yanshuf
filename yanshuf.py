@@ -3,10 +3,8 @@ import bt
 import data_loader
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
-import ffn
 
-from datetime import date
-from itertools import islice, product, chain, combinations
+from itertools import product, chain, combinations
 from monthdelta import monthmod
 from parsers import load
 from math import isnan
@@ -74,7 +72,7 @@ def backtest(algo_stack, keys, data):
         'months': months,
         'score': score
     }, name=strategy_name)])
-
+ 
     index = ['score', 'months', 'correlation', 'cagr', 'explosivity', 'mar-2020', '2020', '2019', '2018', 'monthly_vol', 'max_drawdown',
              'calmar', 'monthly_skew', 'monthly_sharpe',
              'best_month', 'worst_month', 'best_year', 'worst_year'
@@ -308,9 +306,6 @@ def run_tailored_dragon():
     qrv = algo_stacks[0]
     qre = algo_stacks[1]
 
-    dragon_weights = {stock_ticker: 0.12, 'TLT': 0.09,
-                      'long_vol': 0.21, 'commodity_trend': 0.18, 'gold-oz-usd': 0.19, 'alt': 0.21}
-
     tailored = data_loader.tailored
     long_vol_group = tailored['long_vol_group']
     long_vol_strat = qrv
@@ -323,7 +318,6 @@ def run_tailored_dragon():
         alt_group + [stock_ticker, 'TLT', 'gold-oz-usd']
     data = compile_data(55, keys)
 
-    dfs = []
     strategy_name = 'tailored-dragon'
     long_vol_strategy = bt.Strategy(
         'long_vol', long_vol_strat[1], list(long_vol_group))

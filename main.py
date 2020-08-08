@@ -7,6 +7,6 @@ env = Environment(
     autoescape=select_autoescape(['html', 'xml'])
 )
 
-template = env.get_template('index.html')
+template = env.get_template('index.html.jinja')
 table = yanshuf.run_tailored_dragon()
 print(template.render(table=table))

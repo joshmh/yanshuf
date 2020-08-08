@@ -2,6 +2,9 @@
 Parses each kind of spreadsheet into our data structures.
 """
 
+import logging, sys
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+
 import math
 import os
 from itertools import accumulate, islice, chain
@@ -13,7 +16,7 @@ def adjust(acc, val):
     val = 0 if math.isnan(val) else val
     return acc * (1 + (val/100))
 
- 
+    
 def adjust_pct(acc, val):
     val = 0 if math.isnan(val) else val
     return acc * (1 + val)
@@ -41,8 +44,8 @@ def hfrx_to_date(d):
 def parse_hfrx(fn):
     file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
-    df = pd.read_csv(file, skiprows=4, header=None, index_col=0,
-                     names=['date', 'value'], parse_dates=None, skipfooter=7)
+    df = pd.read_csv(file, skiprows=1, header=None, index_col=0,
+                     names=['date', 'value'], parse_dates=None)
 
     dates = df.index.map(hfrx_to_date)
     data = pd.Series(df['value'], index=dates, name=ticker)

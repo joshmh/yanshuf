@@ -215,6 +215,8 @@ def dragon_backtest(keys, strategy, data):
     df = pd.DataFrame(filtered_data)
     df.dropna(inplace=True)
 
+    print(df.pct_change().corr().style.background_gradient(cmap='coolwarm').set_precision(2).render())
+    
     test = bt.Backtest(strategy, df, progress_bar=False)
     res = bt.run(test)
 
@@ -302,20 +304,27 @@ def run_all_dragon():
 
 
 def run_tailored_dragon():
-    stock_ticker = 'ACWI'
+    tailored = data_loader.tailored
+
+    stock_ticker = tailored['stocks']
+    gold_ticker = tailored['gold']
     qrv = algo_stacks[0]
     qre = algo_stacks[1]
 
-    tailored = data_loader.tailored
     long_vol_group = tailored['long_vol_group']
     long_vol_strat = qrv
+    
     commodity_trend_group = tailored['commodity_trend_group']
     commodity_trend_strat = qrv
+
     alt_group = tailored['alt_group']
     alt_strat = qre
 
+    bond_group = tailored['bonds']
+    bond_strat = qre
+    
     keys = long_vol_group + commodity_trend_group + \
-        alt_group + [stock_ticker, 'TLT', 'gold-oz-usd']
+        alt_group + bond_group + [stock_ticker, gold_ticker]
     data = compile_data(55, keys)
 
     strategy_name = 'tailored-dragon'
@@ -325,12 +334,15 @@ def run_tailored_dragon():
         'commodity_trend', commodity_trend_strat[1], list(commodity_trend_group))
     alt_strategy = bt.Strategy(
         'alt', alt_strat[1], list(alt_group))
+    bond_strategy = bt.Strategy(
+        'bonds', bond_strat[1], list(bond_group))
+    
     strategy = bt.Strategy(strategy_name, [bt.algos.RunQuarterly(),
                                            bt.algos.SelectAll(),
                                            bt.algos.WeighEqually(),
                                            bt.algos.Rebalance()], [long_vol_strategy,
                                                                    commodity_trend_strategy, alt_strategy,
-                                                                   stock_ticker, 'TLT', 'gold-oz-usd'])
+                                                                   bond_strategy, stock_ticker, gold_ticker])
     df = dragon_backtest(keys, strategy, data)
 
     return df.style.format(to_pct_fmt)\

@@ -9,4 +9,4 @@ env = Environment(
 
 template = env.get_template('index.html.jinja')
 table = yanshuf.run_tailored_dragon()
-print(template.render(table=table))
+# print(template.render(table=table))

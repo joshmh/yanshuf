@@ -143,6 +143,7 @@ def parse_yahoo(fn):
 
 def restrict(pair):
     ticker, df = pair
+    logging.info('ticker: %s, %s', ticker, df.shape)
     return (ticker, df)
 
 

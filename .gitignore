@@ -134,3 +134,4 @@ data_loader.py
 *.csv
 *.html
 plots/
+TODO.md

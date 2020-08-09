@@ -8,5 +8,5 @@ env = Environment(
 )
 
 template = env.get_template('index.html.jinja')
-table = yanshuf.run_tailored_dragon()
-# print(template.render(table=table))
+perf, corr, info = yanshuf.run_tailored_dragon()
+print(template.render(perf=perf, corr=corr, info=info))

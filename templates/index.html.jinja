@@ -33,9 +33,62 @@
         td {
         text-align: right;
         }
+
+        .corr td {
+        width: 50px;
+        height: 50px;
+        font-size: 12px;
+        text-align: center;
+        border: 0;
+        }
+
+        .corr th {
+            padding: 0;
+            border: 0;
+        }
+
+        .corr table {
+        font-size: 12px;
+        }
+
+        .corr {
+        margin: 3em;
+        }
+
+        .corr th {
+        padding: 1em;
+        }
+
+        .info {
+        margin: 3em;
+        font-size: ;
+        font-family: verdana;
+        line-height: 1.7;
+        }
+
+        .fund-group {
+        font-weight: bold;
+        }
+
+        .short-name {
+            font-weight: bold;
+            font-size: 70%;
+        }
     </style>
 </head>
 <body>
-    {{ table }}
+    <div class="perf">{{ perf }}</div>
+    <div class="info">
+        {% for (group_name, group) in info %}
+            <div>
+            <span class="fund-group">{{ group_name }}</span>:
+            {% for (fund_name, short_name) in group %}
+                {% if not loop.first %}, {% endif %}<span class="fund-name">{{ fund_name }}
+                </span> <span class="short-name">[{{ short_name }}]</span>
+            {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+    <div class="corr">{{ corr }}</div>
 </body>
 </html>

@@ -1,7 +1,7 @@
 """
 Parses each kind of spreadsheet into our data structures.
 """
-
+from pathlib import PurePath
 import logging, sys
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
@@ -146,18 +146,20 @@ def restrict(pair):
     logging.info('ticker: %s, %s', ticker, df.shape)
     return (ticker, df)
 
+def parse_class_list(parse_class, keys):
+    return [file for file in spreadsheets[parse_class] if PurePath(file).stem in keys]
 
-def load():
+def load(keys):
     return dict(map(restrict,
-                    chain(map(parse_rcm, spreadsheets['rcm']),
+                    chain(map(parse_rcm, parse_class_list('rcm', keys)),
                           map(parse_tabular_csv,
-                              spreadsheets['tabular_csvs']),
-                          map(parse_iasg, spreadsheets['iasg']),
-                          map(parse_amundi, spreadsheets['amundi']),
+                              parse_class_list('tabular_csvs', keys)),
+                          map(parse_iasg, parse_class_list('iasg', keys)),
+                          map(parse_amundi, parse_class_list('amundi', keys)),
                           map(parse_eureka,
-                              spreadsheets['eurekahedge']),
-                          map(parse_hfrx, spreadsheets['hfrx']),
-                          map(parse_yahoo, spreadsheets['yahoo']),
-                          map(parse_fred, spreadsheets['fred'])
+                              parse_class_list('eurekahedge', keys)),
+                          map(parse_hfrx, parse_class_list('hfrx', keys)),
+                          map(parse_yahoo, parse_class_list('yahoo', keys)),
+                          map(parse_fred, parse_class_list('fred', keys))
                           ))
                 )

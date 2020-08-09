@@ -1,3 +1,6 @@
+import logging, sys
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+
 import pandas as pd
 import bt
 import data_loader
@@ -27,7 +30,7 @@ stat_keys = ['max_drawdown', 'monthly_vol', 'best_month', 'best_year', 'worst_mo
 
 
 def compile_data(minimum_months, keys):
-    data = load()
+    data = load(keys)
     res = {k: v for k, v in data.items(
     ) if k in keys and v.size > minimum_months}
 
@@ -217,12 +220,14 @@ def dragon_backtest(keys, strategy, data):
 
     print(df.pct_change().corr().style.background_gradient(cmap='coolwarm').set_precision(2).render())
     
+    logging.info(df)
     test = bt.Backtest(strategy, df, progress_bar=False)
     res = bt.run(test)
 
     filtered_stats = res.stats.filter(stat_keys, axis='index')
     strategy_name = strategy.name
     ss = res.stats[strategy_name]
+    logging.info('end: %s', ss['end'])
     months_rec = monthmod(ss['start'], ss['end'])
     months = months_rec[0].months
     ps = res[strategy_name]

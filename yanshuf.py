@@ -13,18 +13,16 @@ from monthdelta import monthmod
 from parsers import load
 from math import isnan
 
-algo_stacks = [
-    ('qrv', [bt.algos.RunQuarterly(),
-             bt.algos.SelectAll(),
+algo_stacks = (
+    ('qrv', [bt.algos.SelectAll(),
              bt.algos.WeighInvVol(),
              bt.algos.Rebalance()]
      ),
-    ('qre', [bt.algos.RunQuarterly(),
-             bt.algos.SelectAll(),
+    ('qre', [bt.algos.SelectAll(),
              bt.algos.WeighEqually(),
              bt.algos.Rebalance()]
      )
-]
+)
 
 stat_keys = ['max_drawdown', 'monthly_vol', 'best_month', 'best_year', 'worst_month',
              'worst_year', 'monthly_skew', 'monthly_sharpe', 'cagr', 'calmar', 'three_month']
@@ -60,7 +58,6 @@ def dragon_backtest(keys, strategy, data):
     strategy_name = strategy.name
     ss = res.stats[strategy_name]
 
-    logging.info(res)    
     logging.info('end: %s', ss['end'])
     months_rec = monthmod(ss['start'], ss['end'])
     months = months_rec[0].months
@@ -90,20 +87,16 @@ def dragon_backtest(keys, strategy, data):
 
 
 def group_info(group):
-    logging.info(group)
     return [(key, data_loader.shortnames[key]) for key in group]
 
 def tailored_info():
     return [(group_name, group_info(group)) for (group_name, group) in tailored.items() if len(group) > 0]
 
 def run_tailored_dragon():
-    stock_ticker = tailored['stocks']
-    gold_ticker = tailored['gold']
-    qrv = algo_stacks[0]
-    qre = algo_stacks[1]
-
+    qrv, qre = algo_stacks
+    
     long_vol_group = tailored['long_vol_group']
-    long_vol_strat = qrv
+    long_vol_strat = qre
     
     commodity_trend_group = tailored['commodity_trend_group']
     commodity_trend_strat = qrv
@@ -122,9 +115,7 @@ def run_tailored_dragon():
     
     keys = long_vol_group + commodity_trend_group + \
         alt_group + bond_group + stocks_group + gold_group
-    
-    logging.info(keys)
-    
+        
     data = compile_data(55, keys)
 
     strategy_name = 'tailored-dragon'
@@ -141,12 +132,13 @@ def run_tailored_dragon():
     stocks_strategy = bt.Strategy(
         'stocks', stocks_strat[1], list(stocks_group))
     
-    strategy = bt.Strategy(strategy_name, [bt.algos.RunQuarterly(),
+    strategy = bt.Strategy(strategy_name, [bt.algos.RunYearly(),
                                            bt.algos.SelectAll(),
                                            bt.algos.WeighEqually(),
                                            bt.algos.Rebalance()], [long_vol_strategy,
                                                                    commodity_trend_strategy, alt_strategy,
                                                                    bond_strategy, stocks_strategy, gold_strategy])
+    
     stats, sources = dragon_backtest(keys, strategy, data)
     
     performance_table = stats.style.format(to_pct_fmt)\
@@ -154,9 +146,7 @@ def run_tailored_dragon():
         .format(to_float_fmt,
                 subset=['calmar', 'monthly_skew', 'monthly_sharpe'])\
         .render()
-    
-    logging.info(sources)
-    
+        
     corr_table = sources.rename(columns=data_loader.shortnames).pct_change().corr()\
         .style.background_gradient(cmap='coolwarm')\
         .set_precision(2).render()

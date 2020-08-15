@@ -14,8 +14,8 @@ series = parsers.load([sp_name])[sp_name].pct_change().loc['2001-09-01':'2017-05
 print(series)
 adjusted = series.subtract(risk_free)
 skew = adjusted.skew() / annualized_frac
-sigma = adjusted.std()
-mu = adjusted.mean()
+sigma = adjusted.std() * annualized_frac
+mu = adjusted.mean() * annualized_frac
 
 skew_f = skew
 

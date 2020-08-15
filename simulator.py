@@ -1,4 +1,5 @@
 import logging, sys
+import math
 from functools import reduce
 from math import sqrt
 import pandas as pd
@@ -24,7 +25,7 @@ def load():
         
     return pd.DataFrame(dfs).dropna()
     
-        
+
 def simulate():
     df = load()
 
@@ -67,10 +68,12 @@ def simulate():
             logger.info('Rebalanced on %s to: %s', timestamp, holdings)
             
     series = pd.Series(values, daterange).pct_change().dropna()
-    skew = series.skew()
+    af = math.sqrt(12)
+    skew = series.skew() / af
+    kurt = series.kurt() / 12
     sigma = series.std()
     mu = series.mean()
-    tau = skill_metric(mu, sigma, skew) * sqrt(12)
+    tau = skill_metric(mu, sigma, skew) * af
     
     logger.info(('skew', skew))
     logger.info(('cagr', emp.cagr(series, emp.MONTHLY)))
@@ -78,9 +81,14 @@ def simulate():
     logger.info(('sigma', sigma))
     logger.info(('sharpe', emp.sharpe_ratio(series, 0, emp.MONTHLY)))
     logger.info(('tau', tau))
+    logger.info(('kurt', kurt))
     
 
 simulate()        
 
 # TODO: in order to do fallback, need to convert to pct_change, then convert back
 # for share pricing to work.
+
+# TODO: create df of stats for full run an all constituents
+
+# Try vol-adjusted rebalancing (only makes sense for multiple funds within a category)

@@ -11,7 +11,8 @@ def compute_eta(skew):
 
 def skill_metric(mu, sigma, skew):
     eta = compute_eta(skew)
+    print(('eta', eta))
     t = (2 / pi) * ((eta ** 2) / (1 + eta ** 2))
     return (mu / sigma) * ((1 - t) ** 0.5) + \
-        sgn(eta) * atan((2 * mu) / (pi * sigma)) * (t ** 0.5)
+        sgn(eta) * (2 / pi) * atan((2 * mu) / (pi * sigma)) * (t ** 0.5)
 

@@ -1,10 +1,12 @@
 import logging, sys
 from functools import reduce
+from math import sqrt
 import pandas as pd
 import empyrical as emp
 from scipy import stats
 import parsers
 import data_loader
+from skill_metric import skill_metric
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 logger = logging.getLogger('simulator')
@@ -15,12 +17,7 @@ def load():
     for _, rec in data_loader.tailored.items():
         rec_type = rec[0]
         
-        if rec_type == 'fallback':
-            primary, fallback = rec[1:]
-            df = pd.DataFrame(parsers.load([primary, fallback])).pct_change()
-            # TODO: convert back to prices
-            dfs[primary + '*'] = pd.Series(df.loc[:, primary].fillna(df.loc[:, fallback]))
-        elif rec_type == 'single':
+        if rec_type == 'single':
             fund_name = rec[1]
             dfs[fund_name] = parsers.load([fund_name])[fund_name]
         else: raise "Unrecognized load record type."
@@ -70,9 +67,17 @@ def simulate():
             logger.info('Rebalanced on %s to: %s', timestamp, holdings)
             
     series = pd.Series(values, daterange).pct_change().dropna()
-    logger.info(('skew', stats.skew(series, nan_policy='raise')))
+    skew = series.skew()
+    sigma = series.std()
+    mu = series.mean()
+    tau = skill_metric(mu, sigma, skew) * sqrt(12)
+    
+    logger.info(('skew', skew))
     logger.info(('cagr', emp.cagr(series, emp.MONTHLY)))
     logger.info(('vol', emp.annual_volatility(series, emp.MONTHLY)))
+    logger.info(('sigma', sigma))
+    logger.info(('sharpe', emp.sharpe_ratio(series, 0, emp.MONTHLY)))
+    logger.info(('tau', tau))
     
 
 simulate()        

@@ -44,9 +44,10 @@ def hfrx_to_date(d):
 def parse_hfrx(fn):
     file = DATA_DIR + fn
     ticker = generate_ticker(os.path.splitext(fn)[0])
-    df = pd.read_csv(file, skiprows=1, header=None, index_col=0,
+    df = pd.read_csv(file, skiprows=1, header=None, index_col=0, usecols=[0, 1],
                      names=['date', 'value'], parse_dates=None)
 
+    print(df)
     dates = df.index.map(hfrx_to_date)
     data = pd.Series(df['value'], index=dates, name=ticker)
 

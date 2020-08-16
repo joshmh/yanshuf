@@ -28,23 +28,23 @@ def load():
 def compute_stats(value_series):    
     series = value_series.pct_change().dropna()
     af = math.sqrt(12)
-    skew = series.skew() / af
-    kurt = series.kurt() / 12
-    sigma = series.std()
-    mu = series.mean()
-    sm = skill_metric(mu, sigma, skew)
-    if sm:
-        tau = sm * af
-    else:
-        tau = None
+    raw_skew = series.skew()
+    raw_kurt = series.kurt()
+    skew = raw_skew / af
+    kurt = raw_kurt / 12
+    sigma = series.std() * af
+    mu = series.mean() * 12
+    tau = skill_metric(mu, sigma, skew)
     
     d = {
         'cagr': emp.cagr(series, emp.MONTHLY),
-        'vol': emp.annual_volatility(series, emp.MONTHLY),
-        'sharpe': emp.sharpe_ratio(series, 0, emp.MONTHLY),
+        'vol': sigma,
+        'sharpe': mu / sigma,
         'tau': tau,
         'skew': skew,
-        'kurt': kurt
+        'kurt': kurt,
+        'raw_skew': raw_skew,
+        'raw_kurt': raw_kurt
     }
         
     return pd.Series(d)

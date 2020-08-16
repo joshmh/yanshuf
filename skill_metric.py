@@ -7,12 +7,18 @@ def sgn(x):
     return 0
 
 def compute_eta(skew):
-    return ETA_TABLE[round(skew, 2)]
+    key = round(skew, 2)
+    if key in ETA_TABLE:
+        return ETA_TABLE[key]
+    else:
+        return None
 
 def skill_metric(mu, sigma, skew):
     eta = compute_eta(skew)
-    print(('eta', eta))
-    t = (2 / pi) * ((eta ** 2) / (1 + eta ** 2))
-    return (mu / sigma) * ((1 - t) ** 0.5) + \
-        sgn(eta) * (2 / pi) * atan((2 * mu) / (pi * sigma)) * (t ** 0.5)
+    if eta is None:
+        return None
+    else:
+        t = (2 / pi) * ((eta ** 2) / (1 + eta ** 2))
+        return (mu / sigma) * ((1 - t) ** 0.5) + \
+            sgn(eta) * (2 / pi) * atan((2 * mu) / (pi * sigma)) * (t ** 0.5)
 

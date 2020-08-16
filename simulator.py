@@ -24,7 +24,39 @@ def load():
         else: raise "Unrecognized load record type."
         
     return pd.DataFrame(dfs).dropna()
+
+def compute_stats(value_series):    
+    series = value_series.pct_change().dropna()
+    af = math.sqrt(12)
+    skew = series.skew() / af
+    kurt = series.kurt() / 12
+    sigma = series.std()
+    mu = series.mean()
+    sm = skill_metric(mu, sigma, skew)
+    if sm:
+        tau = sm * af
+    else:
+        tau = None
     
+    d = {
+        'cagr': emp.cagr(series, emp.MONTHLY),
+        'vol': emp.annual_volatility(series, emp.MONTHLY),
+        'sharpe': emp.sharpe_ratio(series, 0, emp.MONTHLY),
+        'tau': tau,
+        'skew': skew,
+        'kurt': kurt
+    }
+        
+    return pd.Series(d)
+    
+def make_stats_df(data_df, simulation_series):
+    d = {}
+    for fund_name, fund_series in data_df.items():
+        d[fund_name] = compute_stats(fund_series)
+        
+    d['simulation'] = compute_stats(simulation_series)
+    
+    return pd.DataFrame(d)
 
 def simulate():
     df = load()
@@ -67,22 +99,10 @@ def simulate():
                 holdings[fund_name] = shares
             logger.info('Rebalanced on %s to: %s', timestamp, holdings)
             
-    series = pd.Series(values, daterange).pct_change().dropna()
-    af = math.sqrt(12)
-    skew = series.skew() / af
-    kurt = series.kurt() / 12
-    sigma = series.std()
-    mu = series.mean()
-    tau = skill_metric(mu, sigma, skew) * af
+    simulation_series = pd.Series(values, daterange)    
     
-    logger.info(('skew', skew))
-    logger.info(('cagr', emp.cagr(series, emp.MONTHLY)))
-    logger.info(('vol', emp.annual_volatility(series, emp.MONTHLY)))
-    logger.info(('sigma', sigma))
-    logger.info(('sharpe', emp.sharpe_ratio(series, 0, emp.MONTHLY)))
-    logger.info(('tau', tau))
-    logger.info(('kurt', kurt))
-    
+    stats_df = make_stats_df(df, simulation_series)
+    print(stats_df)
 
 simulate()        
 

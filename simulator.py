@@ -14,8 +14,9 @@ logger = logging.getLogger('simulator')
 logger.setLevel(logging.INFO)
 
 def load():
+    data_group = data_loader.tailored
     dfs = {}
-    for _, rec in data_loader.tailored.items():
+    for _, rec in data_group.items():
         rec_type = rec[0]
         
         if rec_type == 'single':
@@ -37,10 +38,12 @@ def compute_stats(value_series):
     tau = skill_metric(mu, sigma, skew)
     
     d = {
+        'calmar': emp.calmar_ratio(series, emp.MONTHLY),
+        'tau': tau,
         'cagr': emp.cagr(series, emp.MONTHLY),
+        'max_drawdown': emp.max_drawdown(series),
         'vol': sigma,
         'sharpe': mu / sigma,
-        'tau': tau,
         'skew': skew,
         'kurt': kurt,
         'raw_skew': raw_skew,
@@ -57,6 +60,9 @@ def make_stats_df(data_df, simulation_series):
     d['simulation'] = compute_stats(simulation_series)
     
     return pd.DataFrame(d)
+
+def make_corr_df(data_df):
+    return data_df.pct_change().corr()
 
 def simulate():
     df = load()
@@ -103,6 +109,8 @@ def simulate():
     
     stats_df = make_stats_df(df, simulation_series)
     print(stats_df)
+    print(make_corr_df(df))
+    print(f'Based on {len(daterange)} months.')
 
 simulate()        
 

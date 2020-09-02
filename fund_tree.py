@@ -36,8 +36,10 @@ def flatten(t):
     test_pct = 0
     for tp in global_pct.values():
         test_pct += tp
+    test_pct = round(test_pct, 10)
     if test_pct != 1:
-        print("Pcts do not sum up to 100 pct!")
+        print(global_pct)
+        print(f"Pcts do not sum up to 100 pct! ({test_pct})")
         return
         
     return global_pct

@@ -15,6 +15,7 @@ logger = logging.getLogger('simulator')
 logger.setLevel(logging.INFO)
 
 fund_data = fund_tree.flatten(data_loader.simulation)
+initial_capital = 1_000_000
 
 def load():
     dfs = {}
@@ -64,10 +65,15 @@ def make_corr_df(data_df):
 def is_rebalance(timestamp):
     return timestamp.is_year_start
 
+def fund_amounts():
+    d = {}
+    for name, pct in fund_data.items():
+        d[name] = round(pct * initial_capital)
+    return d
+
 def simulate():
     df = load()
 
-    initial_capital = 100000
     holdings = {}
 
     start_date = df.index[0]
@@ -106,7 +112,8 @@ def simulate():
     stats_df = make_stats_df(df, simulation_series)
     print(stats_df)
     print(make_corr_df(df))
-    print(f'Based on {len(daterange)} months.')
+    print(f'Based on {df.shape[1]} funds over {len(daterange)} months.')
+    print(fund_amounts())
     print(start_date)
     print(end_date)
 

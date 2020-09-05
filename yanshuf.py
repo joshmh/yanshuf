@@ -7,7 +7,6 @@ import data_loader
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 
-from data_loader import tailored
 from itertools import product, chain, combinations
 from monthdelta import monthmod
 from parsers import load

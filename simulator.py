@@ -7,6 +7,7 @@ import empyrical as emp
 from scipy import stats
 import parsers
 import data_loader
+import taxes
 import fund_tree
 from skill_metric import skill_metric
 
@@ -50,12 +51,18 @@ def compute_stats(value_series):
         
     return pd.Series(d)
     
+def short_name(fund_name):
+    if fund_name in data_loader.shortnames:
+        return data_loader.shortnames[fund_name]
+    else:
+        return fund_name
+    
 def make_stats_df(data_df, simulation_series):
     d = {}
     for fund_name, fund_series in data_df.items():
         d[fund_name] = compute_stats(fund_series)
         
-    d['simulation'] = compute_stats(simulation_series)
+    d['sim'] = compute_stats(simulation_series)
     
     return pd.DataFrame(d)
 
@@ -71,16 +78,39 @@ def fund_amounts():
         d[name] = round(pct * initial_capital)
     return d
 
+def sell_purchases(purchases, fund_name, delta_shares):
+    cur_purchases = purchases[fund_name]
+    basis = 0
+    shares_to_sell = delta_shares
+    
+    while(True):
+        (shares, price) = cur_purchases.pop(0)
+        logger.info((fund_name, shares_to_sell, shares, len(cur_purchases)))
+        if shares_to_sell > shares:
+            basis += price * shares
+            shares_to_sell -= shares
+        else:
+            basis += price * shares_to_sell
+            remaining = shares - shares_to_sell
+            if remaining > 0:
+                cur_purchases.insert(0, (remaining, price))
+            break
+    
+    print(purchases[fund_name])
+    return basis
+        
 def simulate():
     df = load()
 
     holdings = {}
-
+    taxable_cap_gains = 0
+    tax_owed = 0
     start_date = df.index[0]
     end_date = df.index[-1]
     
     daterange = pd.date_range(start_date, end_date, freq='MS')
     values = []
+    purchases = {}
     for date in daterange:
         
         # Initialize
@@ -88,24 +118,60 @@ def simulate():
             for fund_name, pct in fund_data.items():
                 price = df.at[date, fund_name]
                 shares = (initial_capital * pct) / price
-                holdings[fund_name] = shares
-
+                if taxes.is_taxable(fund_name):
+                    purchases[fund_name] = [(shares, price)]
+                holdings[fund_name] = shares        
+        
         current_fund_value = 0
         for fund_name in fund_data.keys():
             price = df.at[date, fund_name]
             shares = holdings[fund_name]
             current_fund_value += (shares * price)
         
-        values.append(current_fund_value)
+        timestamp = pd.Timestamp(date)
 
         # Rebalance
-        timestamp = pd.Timestamp(date)
-        if is_rebalance(timestamp):
+        if is_rebalance(timestamp):            
+            if tax_owed > 0:
+                logger.info(f'Adjusting fund value for {tax_owed} taxes.')
+            current_fund_value -= tax_owed
+            tax_owed = 0
+            
             for fund_name, pct in fund_data.items():
                 price = df.at[date, fund_name]
                 shares = (current_fund_value * pct) / price
+                old_holdings = holdings[fund_name]
+                delta_shares = shares - old_holdings
+
+                if taxes.is_taxable(fund_name):
+                    if delta_shares < 0:
+                        # Sell
+                        sell_shares = -delta_shares
+                        revenue = sell_shares * price
+                        basis = sell_purchases(purchases, fund_name, sell_shares)
+                        taxable_cap_gains += revenue - basis
+                        logger.info(f'revenue: {revenue}, basis: {basis}, cap_gains: {taxable_cap_gains}')
+                    elif delta_shares > 0:
+                        # Buy
+                        purchases[fund_name].append((delta_shares, price))
+                    
                 holdings[fund_name] = shares
             logger.info('Rebalanced on %s to: %s', timestamp, holdings)
+
+        # Simple carry-forward of loss
+        if timestamp.is_year_start:
+            if taxable_cap_gains > 0:
+                tax = taxable_cap_gains * taxes.TAX_RATE
+                tax_owed += tax
+                logger.info(f'tax: {tax}')
+                taxable_cap_gains = 0
+                
+        values.append(current_fund_value)
+            
+        # TODO: add in capital gains taxation
+        # Record purchase batches with prices
+        # Handle FIFO buys and sells
+        # Deduct taxes when reblancing
             
     simulation_series = pd.Series(values, daterange)    
     
